@@ -1,6 +1,8 @@
 import telebot
 from config import TG_API_TOKEN
 import random
+import requests
+import re
 
 jokes = [
     "Настоящий мужчина хочет только одного — стать достаточно богатым, чтобы просто играть в компьютере.",
@@ -10,6 +12,34 @@ jokes = [
     "Чисто прибранная квартира и вкусный ужин — это два признака неисправного компьютера.",
     "Медленный компьютер это когда ты знаешь имена всех разработчиков Adobe Photoshop.",
 ]
+
+LINK_JOKES = "https://www.anekdot.ru/tags/программист/1?type=anekdots"
+
+
+def ParseJokes():
+    page = 1
+    link = f"https://www.anekdot.ru/tags/программист/{page}?type=anekdots"
+    html = requests.get(link).text
+    maxPage = int(
+    re.findall(
+        r"<a href=\"/tags.+\">(\d+)</a>",
+        html,
+    )[0]
+    )
+
+    page = random.randint(1, maxPage)
+
+    html = requests.get(link).text
+
+    joke = random.choice(
+        re.findall(r"<div class=\"text\">([\w\s,.<>\-\?:!\"—+«»–()]+)", html)
+    ).rstrip("<")
+
+    if "<br>" in joke:
+        joke = joke.replace("<br>", "\n")
+    
+    return joke
+
 
 mathsOp = ["+", "-", "*"]
 
@@ -29,14 +59,14 @@ def send_welcome(message):
 @bot.message_handler(commands=["help"])
 def send_welcome(message):
     bot.send_message(
-        message,
-        "/about - Информация об авторе\n/joke - Шутка\n/math - Случайное уравнение\n\nРеши пример: (пример) - Решение мат. примера",
+        message.chat.id,
+        "/about - Информация об авторе\n/joke - Шутка\n/math - Случайное уравнение\n/rnd - случайное число\n\nРеши пример: (пример) - Решение мат. примера",
     )
 
 
 @bot.message_handler(commands=["joke"])
 def send_welcome(message):
-    bot.send_message(message.chat.id, jokes[random.randint(0, len(jokes) - 1)])
+    bot.send_message(message.chat.id, ParseJokes())
 
 
 @bot.message_handler(commands=["math"])
@@ -61,11 +91,11 @@ def echo_all(message):
 
 @bot.message_handler(func=lambda message: True)
 def echo_all(message):
-    if message.text == "Привет":
-        bot.send_message(message.chat.id, "Дороу")
-    elif message.text == "Пока":
+    if message.text.lower() == "привет":
+        bot.send_message(message.chat.id, "Хай")
+    elif message.text.lower() == "пока":
         bot.send_message(message.chat.id, "Аривидерчи")
-    elif message.text == "Как дела?":
+    elif message.text.lower() == "как дела?":
         bot.send_message(message.chat.id, "Норм")
     elif "Реши пример: " in message.text:
         bot.send_message(
